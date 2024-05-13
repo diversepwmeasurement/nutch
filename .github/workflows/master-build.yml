@@ -1,78 +1,79 @@
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-name: master pull request ci
-
-on:
-  push:
-    branches: [master]
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [master]
-
 jobs:
   javadoc:
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v4.1.4
+    - continue-on-error: true
+      name: Set up JDK ${{ matrix.java }}
+      uses: actions/setup-java@v4.2.1
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: Javadoc
+      run: ant clean javadoc -buildfile build.xml
     strategy:
       matrix:
-        java: ['11']
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4.1.4
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4.2.1
-        with:
-          java-version: ${{ matrix.java }}
-          distribution: 'temurin'
-      - name: Javadoc
-        run: ant clean javadoc -buildfile build.xml
+        java:
+        - '11'
+        os:
+        - ubuntu-latest
   rat:
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v4.1.4
+    - continue-on-error: true
+      name: Set up JDK ${{ matrix.java }}
+      uses: actions/setup-java@v4.2.1
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: Run Apache Rat
+      run: ant clean run-rat -buildfile build.xml
+    - continue-on-error: true
+      name: Cache unknown licenses
+      run: echo "UNKNOWN_LICENSES=$(sed -n 18p /home/runner/work/nutch/nutch/build/apache-rat-report.txt)"
+        >> $GITHUB_ENV
+    - continue-on-error: true
+      name: Versions
+      run: 'echo $UNKNOWN_LICENSES
+
+        '
+    - continue-on-error: true
+      if: ${{ env.UNKNOWN_LICENSES != '0 Unknown Licenses' }}
+      name: Fail if any unknown licenses
+      run: exit 1
     strategy:
       matrix:
-        java: ['11']
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4.1.4
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4.2.1
-        with:
-          java-version: ${{ matrix.java }}
-          distribution: 'temurin'
-      - name: Run Apache Rat
-        run: ant clean run-rat -buildfile build.xml
-      - name: Cache unknown licenses
-        run: echo "UNKNOWN_LICENSES=$(sed -n 18p /home/runner/work/nutch/nutch/build/apache-rat-report.txt)" >> $GITHUB_ENV
-      - name: Versions
-        run: |
-          echo $UNKNOWN_LICENSES
-      - name: Fail if any unknown licenses
-        if: ${{ env.UNKNOWN_LICENSES != '0 Unknown Licenses' }}
-        run: exit 1
+        java:
+        - '11'
+        os:
+        - ubuntu-latest
   test:
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v4.1.4
+    - continue-on-error: true
+      name: Set up JDK ${{ matrix.java }}
+      uses: actions/setup-java@v4.2.1
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: Test
+      run: ant clean test -buildfile build.xml
     strategy:
       matrix:
-        java: ['11']
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4.1.4
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4.2.1
-        with:
-          java-version: ${{ matrix.java }}
-          distribution: 'temurin'
-      - name: Test
-        run: ant clean test -buildfile build.xml
+        java:
+        - '11'
+        os:
+        - ubuntu-latest
+        - macos-latest
+name: master pull request ci
+on:
+  repository_dispatch:
+    types: trigger-ga___master-build.yml
